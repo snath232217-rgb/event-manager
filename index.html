@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EventPulse // Offline-First AI Event Coordination Hub (v2.5 Emergency Edition)</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220%22><text y=%2222%22 font-size=%2222%22>📡</text></svg>">
+</head>
+<body>
+
+  <!-- Top Tactical Operations Bar -->
+  <header class="app-header">
+    <div class="header-inner">
+      <div class="brand-section">
+        <div class="brand-icon">📡</div>
+        <div>
+          <div class="brand-title">EVENTPULSE // OPS v2.5</div>
+          <div class="brand-subtitle">Emergency-Aware Resilient Command Hub</div>
+        </div>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 0.65rem; flex-wrap: wrap;">
+        <!-- Network Status Pill -->
+        <div id="status-indicator" class="status-pill status-online">
+          <div class="pulse-dot"></div>
+          <span id="status-text">Cloud Connected • Realtime Synced</span>
+        </div>
+
+        <!-- Terminal Persona Selector -->
+        <div class="station-selector">
+          <label for="station-select">Terminal:</label>
+          <select id="station-select" class="station-select">
+            <option value="coordinator">HQ Central Command (Coordinator)</option>
+            <option value="alice_av">Alice — AV & Stage Ops (West Wing)</option>
+            <option value="bob_logistics">Bob — Logistics & Hospitality (East Wing)</option>
+            <option value="charlie_depot">Charlie — Equipment Depot & Tech Bay</option>
+          </select>
+        </div>
+
+        <!-- Global Header Action Buttons with Emergency and Flush Controls -->
+        <div class="header-actions">
+          <!-- Active Emergency Indicator Button -->
+          <button id="btn-header-alarm" class="btn btn-alarm-active btn-sm" style="display: none;" title="Emergency conflict active! Click to jump to AI triage.">
+            🚨 Emergency Clash Active!
+          </button>
+
+          <!-- Clear Room Occupancy Safe Restore Button -->
+          <button id="btn-restore-occupancy" class="btn btn-restore btn-sm" title="Safely clear all venue occupancies and reset rooms to 100% vacant state (includes 15s Undo buffer)">
+            🧹 Clear Rooms
+          </button>
+
+          <!-- Flush Depot Gear at a Glance Button -->
+          <button id="btn-header-flush-depot" class="btn btn-flush-depot btn-sm" title="Flush all equipment requisitions at a glance and return all gear to warehouse stock (includes 15s Undo buffer)">
+            📦 Flush Depot
+          </button>
+
+          <button id="btn-toggle-online" class="btn btn-amber btn-sm" title="Simulate dropping or restoring network connection">
+            ⚡ Toggle Wi-Fi Outage
+          </button>
+          
+          <button id="btn-sync-now" class="btn btn-primary btn-sm" style="display: none;" title="Force sync of local mutation queue">
+            🔄 Sync Outbox
+          </button>
+
+          <button id="btn-toggle-sound" class="btn btn-secondary btn-sm" title="Toggle tactical audio effects and emergency siren">
+            🔊 Audio On
+          </button>
+
+          <button id="btn-new-booking" class="btn btn-secondary btn-sm">
+            + Room
+          </button>
+          
+          <button id="btn-new-request" class="btn btn-secondary btn-sm">
+            + Gear
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="main-container">
+
+    <!-- KPI Metric Bar -->
+    <section class="metrics-grid">
+      <div class="metric-card" style="--metric-accent: var(--accent-cyan);">
+        <div class="metric-label">Active Sessions / Venues</div>
+        <div class="metric-value" id="metric-rooms">4 / 5</div>
+        <div class="metric-sub">TechPulse Summit 2026</div>
+      </div>
+      <div class="metric-card" style="--metric-accent: var(--accent-blue);">
+        <div class="metric-label">Depot Stock Allocated</div>
+        <div class="metric-value" id="metric-equipment">25 / 59</div>
+        <div class="metric-sub">Across 6 critical equipment pools</div>
+      </div>
+      <div class="metric-card" style="--metric-accent: var(--accent-rose);">
+        <div class="metric-label">Operational Conflicts</div>
+        <div class="metric-value" id="metric-conflicts">0</div>
+        <div class="metric-sub">Double-bookings & hardware shortages</div>
+      </div>
+      <div class="metric-card" style="--metric-accent: var(--accent-amber);">
+        <div class="metric-label">Pending Offline Mutations</div>
+        <div class="metric-value" id="metric-outbox">0</div>
+        <div class="metric-sub">Queued in Local Terminal Cache</div>
+      </div>
+    </section>
+
+    <!-- Navigation Tabs -->
+    <nav class="tab-navigation">
+      <button class="tab-btn active" data-tab="tab-rooms">
+        🏢 Room Schedules & Occupancy
+      </button>
+      <button class="tab-btn" data-tab="tab-equipment">
+        📦 Equipment Depot & Requisitions
+      </button>
+      <button class="tab-btn" data-tab="tab-conflicts">
+        🚨 Conflict Command & AI Advisor
+        <span class="badge-count" id="badge-conflict-count" style="display: none;">0</span>
+      </button>
+      <button class="tab-btn" data-tab="tab-audit">
+        📜 Immutable Audit Trail
+      </button>
+      <button class="tab-btn" data-tab="tab-simulation">
+        🧪 Outage Simulation Lab
+      </button>
+    </nav>
+
+    <!-- TAB 1: Room Schedules & Occupancy -->
+    <div id="tab-rooms" class="tab-pane active">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.75rem;">
+        <div>
+          <h2 style="font-size: 1.15rem; font-weight: 700; color: #ffffff;">Live Venue Scheduling & Occupancy Matrix</h2>
+          <p style="font-size: 0.8rem; color: var(--text-muted);">Real-time allocation across 5 summit halls. Offline terminal changes are flagged locally with immediate conflict triage.</p>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <button id="btn-tab-restore-occupancy" class="btn btn-restore btn-sm" title="Clear all room assignments">
+            🧹 Flush & Clear All Occupancy
+          </button>
+          
+          <div style="display: flex; background: var(--bg-tertiary); border: 1px solid var(--border-subtle); border-radius: 6px; padding: 2px;">
+            <button id="btn-view-grid" class="btn btn-primary btn-sm" style="border-radius: 4px;">Cards</button>
+            <button id="btn-view-gantt" class="btn btn-secondary btn-sm" style="border-radius: 4px;">Timeline Gantt</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Grid Cards View -->
+      <div id="room-grid" class="room-grid"></div>
+
+      <!-- Gantt Timeline View -->
+      <div id="room-gantt-container" style="display: none;"></div>
+    </div>
+
+    <!-- TAB 2: Equipment Depot (Enhanced with Flush & Return at a Glance) -->
+    <div id="tab-equipment" class="tab-pane">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.75rem;">
+        <div>
+          <h2 style="font-size: 1.15rem; font-weight: 700; color: #ffffff;">Depot Inventory & Active Requisitions</h2>
+          <p style="font-size: 0.8rem; color: var(--text-muted);">Real-time hardware stock, dispatch statuses, and field delivery requests.</p>
+        </div>
+
+        <!-- Dedicated Depot Quick Action Bar -->
+        <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+          <button id="btn-tab-flush-depot" class="btn btn-flush-depot btn-sm" title="Remove all equipment requisitions and reset warehouse stock to 100%">
+            📦 Flush Requisitions at a Glance
+          </button>
+          <button id="btn-tab-return-all" class="btn btn-emerald btn-sm" title="Mark all deployed equipment as returned to depot warehouse">
+            ↩ Return All Deployed Gear
+          </button>
+        </div>
+      </div>
+
+      <!-- Category Filter Chips -->
+      <div style="display: flex; gap: 0.35rem; margin-bottom: 1rem; flex-wrap: wrap;">
+        <button class="btn btn-primary btn-sm filter-btn" data-cat="all">All Pools</button>
+        <button class="btn btn-secondary btn-sm filter-btn" data-cat="visual">Visual</button>
+        <button class="btn btn-secondary btn-sm filter-btn" data-cat="audio">Audio</button>
+        <button class="btn btn-secondary btn-sm filter-btn" data-cat="power">Power</button>
+        <button class="btn btn-secondary btn-sm filter-btn" data-cat="staging">Staging</button>
+      </div>
+
+      <!-- Equipment Stock Pool Cards -->
+      <div id="inventory-grid" class="inventory-grid"></div>
+
+      <!-- Active Equipment Requisitions Table -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin: 1.5rem 0 0.75rem 0;">
+        <h3 style="font-size: 0.95rem; font-weight: 700; color: #e5e7eb;">Field Requisition Log</h3>
+      </div>
+      <div class="table-container">
+        <table class="ops-table">
+          <thead>
+            <tr>
+              <th>Request ID</th>
+              <th>Hardware</th>
+              <th>Destination</th>
+              <th>Requester</th>
+              <th>Priority</th>
+              <th>Status</th>
+              <th>Dispatch Actions</th>
+            </tr>
+          </thead>
+          <tbody id="requests-table-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- TAB 3: Conflict Command Center & AI Advisor (Enhanced with Emergency Siren Banner) -->
+    <div id="tab-conflicts" class="tab-pane">
+      <!-- Emergency Siren Hero Banner -->
+      <div id="conflict-hero" class="conflict-hero-banner" style="display: none;">
+        <div class="conflict-hero-content">
+          <div class="conflict-icon-box">🚨</div>
+          <div>
+            <h3 style="font-size: 1.15rem; font-weight: 800; color: #fb7185;">
+              <span id="conflict-hero-count">1</span> Operational Emergency Conflict(s) Active
+            </h3>
+            <p style="font-size: 0.85rem; color: #fecdd3; margin-top: 0.25rem;">
+              Local offline changes or concurrent edits collided upon synchronization. Emergency sirens active. OpsAI has computed verified safe resolution plans below.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div id="conflicts-container"></div>
+    </div>
+
+    <!-- TAB 4: Activity History & Audit Trail -->
+    <div id="tab-audit" class="tab-pane">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <div>
+          <h2 style="font-size: 1.15rem; font-weight: 700; color: #ffffff;">Event Sourced Activity Ledger</h2>
+          <p style="font-size: 0.8rem; color: var(--text-muted);">Chronological event stream capturing terminal stations, online/offline state, occupancy & depot flushes, and AI resolutions.</p>
+        </div>
+        <button id="btn-export-log" class="btn btn-secondary btn-sm">
+          📥 Export Audit Trail (JSON)
+        </button>
+      </div>
+
+      <div id="audit-timeline-list" class="timeline"></div>
+    </div>
+
+    <!-- TAB 5: Outage Simulation Lab -->
+    <div id="tab-simulation" class="tab-pane">
+      <div style="background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: 10px; padding: 1.5rem; margin-bottom: 1.5rem;">
+        <h2 style="font-size: 1.15rem; font-weight: 700; color: #ffffff; margin-bottom: 0.5rem;">🧪 Incident Simulation & Recovery Control Center</h2>
+        <p style="font-size: 0.85rem; color: var(--text-muted); max-width: 750px; line-height: 1.5;">
+          Test how EventPulse behaves under real-world event crises: total Wi-Fi blackouts, concurrent double-bookings by distant floor staff, depot equipment depletion, emergency occupancy & depot flushes, and OpsAI's safe automatic recovery workflows.
+        </p>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.25rem; margin-top: 1.5rem;">
+          <!-- Scenario 1 -->
+          <div style="background: var(--bg-secondary); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 1.25rem; display: flex; flex-direction: column; justify-content: space-between;">
+            <div>
+              <div style="font-weight: 700; color: #fbbf24; font-size: 0.95rem; margin-bottom: 0.5rem;">
+                Scenario A: Wi-Fi Severance & Room Double-Booking
+              </div>
+              <p style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.4;">
+                Simulates an unexpected internet loss. Alice and Bob concurrently schedule sessions into <strong>Hall Alpha</strong> at 14:00. Watch EventPulse flag the collision, sound the emergency alarm, flash the screen border, and formulate an AI room reassignment.
+              </p>
+            </div>
+            <div style="margin-top: 1rem;">
+              <button id="btn-scenario-1" class="btn btn-amber btn-sm" style="width: 100%; justify-content: center;">
+                ⚡ Trigger Room Collision Scenario
+              </button>
+            </div>
+          </div>
+
+          <!-- Scenario 2 -->
+          <div style="background: var(--bg-secondary); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 1.25rem; display: flex; flex-direction: column; justify-content: space-between;">
+            <div>
+              <div style="font-weight: 700; color: #fb7185; font-size: 0.95rem; margin-bottom: 0.5rem;">
+                Scenario B: Depot Hardware Stock Exhaustion
+              </div>
+              <p style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.4;">
+                Simulates offline field requisitions exceeding physical inventory (e.g. 6x 4K Projectors requested while only 2 remain). Triggers emergency alarm and prompts OpsAI hardware substitutions (85" 4K Confidence Monitors).
+              </p>
+            </div>
+            <div style="margin-top: 1rem;">
+              <button id="btn-scenario-2" class="btn btn-danger btn-sm" style="width: 100%; justify-content: center;">
+                🚨 Trigger Hardware Bottleneck
+              </button>
+            </div>
+          </div>
+
+          <!-- Reset Baseline -->
+          <div style="background: var(--bg-secondary); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 1.25rem; display: flex; flex-direction: column; justify-content: space-between;">
+            <div>
+              <div style="font-weight: 700; color: #34d399; font-size: 0.95rem; margin-bottom: 0.5rem;">
+                Reset Master Blueprint
+              </div>
+              <p style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.4;">
+                Clears all simulated conflicts, resets local station caches, silences emergency alarms, and restores pristine baseline schedule and depot stock.
+              </p>
+            </div>
+            <div style="margin-top: 1rem;">
+              <button id="btn-scenario-reset" class="btn btn-secondary btn-sm" style="width: 100%; justify-content: center;">
+                🔄 Reset to Clean Baseline
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Modal: Book New Room Slot -->
+  <dialog id="dialog-booking" class="custom-modal">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+      <h3 style="font-size: 1.1rem; font-weight: 700; color: #ffffff;">Schedule Venue Session</h3>
+      <button class="btn btn-secondary btn-sm btn-close-modal">✕</button>
+    </div>
+    <form id="form-booking">
+      <div class="form-group">
+        <label for="booking-title">Session Title</label>
+        <input type="text" id="booking-title" class="form-input" placeholder="e.g. Generative AI in Production" required>
+      </div>
+      <div class="form-group">
+        <label for="booking-speaker">Speaker / Host</label>
+        <input type="text" id="booking-speaker" class="form-input" placeholder="e.g. Dr. Maya Lin" required>
+      </div>
+      <div class="form-group">
+        <label for="booking-room-select">Assigned Venue</label>
+        <select id="booking-room-select" class="form-select" required></select>
+      </div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+        <div class="form-group">
+          <label for="booking-start">Start Time</label>
+          <input type="time" id="booking-start" class="form-input" value="13:30" required>
+        </div>
+        <div class="form-group">
+          <label for="booking-end">End Time</label>
+          <input type="time" id="booking-end" class="form-input" value="15:00" required>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary btn-close-modal">Cancel</button>
+        <button type="submit" class="btn btn-primary">Confirm Slot</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Modal: Request Equipment -->
+  <dialog id="dialog-request" class="custom-modal">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+      <h3 style="font-size: 1.1rem; font-weight: 700; color: #ffffff;">Field Equipment Requisition</h3>
+      <button class="btn btn-secondary btn-sm btn-close-modal">✕</button>
+    </div>
+    <form id="form-request">
+      <div class="form-group">
+        <label for="request-equip-select">Hardware Item</label>
+        <select id="request-equip-select" class="form-select" required></select>
+      </div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+        <div class="form-group">
+          <label for="request-quantity">Quantity</label>
+          <input type="number" id="request-quantity" class="form-input" min="1" max="20" value="1" required>
+        </div>
+        <div class="form-group">
+          <label for="request-priority">Priority Level</label>
+          <select id="request-priority" class="form-select">
+            <option value="normal">Normal</option>
+            <option value="high">High (VIP / Keynote)</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="request-room-select">Destination Venue</label>
+        <select id="request-room-select" class="form-select" required></select>
+      </div>
+      <div class="form-group">
+        <label for="request-notes">Operations Notes</label>
+        <textarea id="request-notes" class="form-textarea" rows="2" placeholder="e.g., Deliver directly to back-stage technician desk"></textarea>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary btn-close-modal">Cancel</button>
+        <button type="submit" class="btn btn-primary">Submit Requisition</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Toast Container -->
+  <div id="toast-container"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
